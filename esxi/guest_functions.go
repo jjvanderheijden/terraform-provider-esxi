@@ -103,7 +103,7 @@ func readVmx_contents(c *Config, vmid string) (string, error) {
 
 func updateVmx_contents(c *Config, vmid string, iscreate bool, memsize int, numvcpus int,
 	virthwver int, guestos string, virtual_networks [10][3]string, virtual_disks [60][2]string, notes string,
-	guestinfo map[string]interface{}) error {
+	firmware string, guestinfo map[string]interface{}) error {
 
 	esxiConnInfo := getConnectionInfo(c)
 	log.Printf("[updateVmx_contents]\n")
@@ -329,6 +329,23 @@ func updateVmx_contents(c *Config, vmid string, iscreate bool, memsize int, numv
 	//  Add disk UUID
 	if !strings.Contains(vmx_contents, "disk.EnableUUID") {
 		vmx_contents = vmx_contents + "\ndisk.EnableUUID = \"TRUE\""
+	}
+
+	if firmware == "efi" {
+		if !strings.Contains(vmx_contents, "firmware") {
+			// BIOS -> EFI: Append "firmware = efi" statement
+			log.Printf("[updateVmx_contents] BIOS -> EFI\n")
+			tmpvar = fmt.Sprintf("firmware = \"%s\"\n", firmware)
+			vmx_contents += "\n" + tmpvar
+		}
+	} else {
+		if strings.Contains(vmx_contents, "firmware") {
+			// EFI -> BIOS: Remove "firmware = efi" statement.
+			log.Printf("[updateVmx_contents] EFI -> BIOS\n")
+			re := regexp.MustCompile("firmware = \".*\"\n")
+			regexReplacement = fmt.Sprintf("")
+			vmx_contents = re.ReplaceAllString(vmx_contents, regexReplacement)
+		}
 	}
 
 	//

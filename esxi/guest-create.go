@@ -18,7 +18,7 @@ import (
 
 func guestCREATE(c *Config, guest_name string, disk_store string,
 	src_path string, resource_pool_name string, strmemsize string, strnumvcpus string, strvirthwver string, guestos string,
-	boot_disk_type string, boot_disk_size string, virtual_networks [10][3]string,
+	boot_disk_type string, boot_disk_size string, firmware string, virtual_networks [10][3]string,
 	virtual_disks [60][2]string, guest_shutdown_timeout int, ovf_properties_timer int, notes string,
 	guestinfo map[string]interface{}, ovf_properties map[string]string) (string, error) {
 
@@ -116,6 +116,7 @@ func guestCREATE(c *Config, guest_name string, disk_store string,
 		vmx_contents =
 			fmt.Sprintf("config.version = \\\"8\\\"\n") +
 				fmt.Sprintf("virtualHW.version = \\\"%d\\\"\n", virthwver) +
+				fmt.Sprintf("nvram = \\\"%s.nvram\\\"\n", guest_name) +
 				fmt.Sprintf("displayName = \\\"%s\\\"\n", guest_name) +
 				fmt.Sprintf("numvcpus = \\\"%d\\\"\n", numvcpus) +
 				fmt.Sprintf("memSize = \\\"%d\\\"\n", memsize) +
@@ -154,6 +155,10 @@ func guestCREATE(c *Config, guest_name string, disk_store string,
 				fmt.Sprintf("ide1:0.present = \\\"TRUE\\\"\n") +
 				fmt.Sprintf("ide1:0.fileName = \\\"%s\\\"\n", isofilename) +
 				fmt.Sprintf("ide1:0.deviceType = \\\"cdrom-image\\\"\n")
+		}
+		if firmware == "efi" {
+			vmx_contents = vmx_contents +
+				fmt.Sprintf("firmware = \\\"efi\\\"\n")
 		}
 
 		//
@@ -353,7 +358,7 @@ func guestCREATE(c *Config, guest_name string, disk_store string,
 	//
 	//  make updates to vmx file
 	//
-	err = updateVmx_contents(c, vmid, true, memsize, numvcpus, virthwver, guestos, virtual_networks, virtual_disks, notes, guestinfo)
+	err = updateVmx_contents(c, vmid, true, memsize, numvcpus, virthwver, guestos, virtual_networks, virtual_disks, notes, firmware, guestinfo)
 	if err != nil {
 		return vmid, fmt.Errorf("Failed to update vmx contents: %s\n", err)
 	}

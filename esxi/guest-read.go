@@ -19,7 +19,7 @@ func resourceGUESTRead(d *schema.ResourceData, m interface{}) error {
 
 	var power string
 
-	guest_name, disk_store, disk_size, boot_disk_type, resource_pool_name, memsize, numvcpus, virthwver, guestos, ip_address, virtual_networks, virtual_disks, power, notes, guestinfo, err := guestREAD(c, d.Id(), guest_startup_timeout)
+	guest_name, disk_store, disk_size, boot_disk_type, firmware, resource_pool_name, memsize, numvcpus, virthwver, guestos, ip_address, virtual_networks, virtual_disks, power, notes, guestinfo, err := guestREAD(c, d.Id(), guest_startup_timeout)
 	if err != nil || guest_name == "" {
 		d.SetId("")
 		return nil
@@ -31,6 +31,7 @@ func resourceGUESTRead(d *schema.ResourceData, m interface{}) error {
 	if boot_disk_type != "Unknown" && boot_disk_type != "" {
 		d.Set("boot_disk_type", boot_disk_type)
 	}
+	d.Set("firmware", firmware)
 	d.Set("resource_pool_name", resource_pool_name)
 	d.Set("memsize", memsize)
 	d.Set("numvcpus", numvcpus)
@@ -83,11 +84,11 @@ func resourceGUESTRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func guestREAD(c *Config, vmid string, guest_startup_timeout int) (string, string, string, string, string, string, string, string, string, string, [10][3]string, [60][2]string, string, string, map[string]interface{}, error) {
+func guestREAD(c *Config, vmid string, guest_startup_timeout int) (string, string, string, string, string, string, string, string, string, string, string, [10][3]string, [60][2]string, string, string, map[string]interface{}, error) {
 	esxiConnInfo := getConnectionInfo(c)
 	log.Println("[guestREAD]")
 
-	var guest_name, disk_store, virtual_disk_type, resource_pool_name, guestos, ip_address, notes string
+	var guest_name, disk_store, virtual_disk_type, firmware, resource_pool_name, guestos, ip_address, notes string
 	var dst_vmx_ds, dst_vmx, dst_vmx_file, vmx_contents, power string
 	var disk_size, vdiskindex int
 	var memsize, numvcpus, virthwver string
@@ -101,7 +102,7 @@ func guestREAD(c *Config, vmid string, guest_startup_timeout int) (string, strin
 	stdout, err := runRemoteSshCommand(esxiConnInfo, remote_cmd, "Get Guest summary")
 
 	if strings.Contains(stdout, "Unable to find a VM corresponding") {
-		return "", "", "", "", "", "", "", "", "", "", virtual_networks, virtual_disks, "", "", nil, nil
+		return "", "", "", "", "", "", "", "", "", "", "", virtual_networks, virtual_disks, "", "", nil, nil
 	}
 
 	scanner := bufio.NewScanner(strings.NewReader(stdout))
@@ -192,6 +193,13 @@ func guestREAD(c *Config, vmid string, guest_startup_timeout int) (string, strin
 			stdout = r.FindString(scanner.Text())
 			guestos = strings.Replace(stdout, `"`, "", -1)
 			log.Printf("[guestREAD] guestos found: %s\n", guestos)
+
+		case strings.Contains(scanner.Text(), "firmware = "):
+			r, _ = regexp.Compile(`\".*\"`)
+			stdout = r.FindString(scanner.Text())
+			nr = strings.NewReplacer(`"`, "", `"`, "")
+			firmware = nr.Replace(stdout)
+			log.Printf("[guestREAD] firmware found: %s\n", firmware)
 
 		case strings.Contains(scanner.Text(), "scsi"):
 			re := regexp.MustCompile("scsi([0-3]):([0-9]{1,2}).(.*) = \"(.*)\"")
@@ -286,5 +294,5 @@ func guestREAD(c *Config, vmid string, guest_startup_timeout int) (string, strin
 	}
 
 	// return results
-	return guest_name, disk_store, str_disk_size, virtual_disk_type, resource_pool_name, memsize, numvcpus, virthwver, guestos, ip_address, virtual_networks, virtual_disks, power, notes, guestinfo, err
+	return guest_name, disk_store, str_disk_size, virtual_disk_type, firmware, resource_pool_name, memsize, numvcpus, virthwver, guestos, ip_address, virtual_networks, virtual_disks, power, notes, guestinfo, err
 }

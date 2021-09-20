@@ -228,6 +228,7 @@ Configuration reference
     * key - Required - Key of the property
     * value - Required - Value of the property
   * ovf_properties_timer - Optional - Length of time to wait for ovf_properties to process.  Default 90s.
+  * firmware - Optional - Firmware used to boot the virtual machine. - Default 'bios'. Available bios, efi.
 
 
 * resource "esxi_vswitch"

@@ -42,6 +42,12 @@ func resourceGUEST() *schema.Resource {
 				Default:     nil,
 				Description: "Local path to source ovf files.",
 			},
+			"firmware": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     nil,
+				Description: "Guest firmware type. bios or efi",
+			},
 			"disk_store": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
@@ -250,6 +256,7 @@ func resourceGUESTCreate(d *schema.ResourceData, m interface{}) error {
 	guestos := d.Get("guestos").(string)
 	notes := d.Get("notes").(string)
 	power := d.Get("power").(string)
+	firmware := d.Get("firmware").(string)
 
 	if d.Get("guest_startup_timeout").(int) > 0 {
 		d.Set("guest_startup_timeout", d.Get("guest_startup_timeout").(int))
@@ -308,6 +315,14 @@ func resourceGUESTCreate(d *schema.ResourceData, m interface{}) error {
 	}
 	if boot_disk_type != "thin" && boot_disk_type != "zeroedthick" && boot_disk_type != "eagerzeroedthick" {
 		return errors.New("Error: boot_disk_type must be thin, zeroedthick or eagerzeroedthick")
+	}
+
+	// Validate firmware
+	if firmware == "" {
+		firmware = "bios"
+	}
+	if firmware != "bios" && firmware != "efi" {
+		return errors.New("Error: firmware must be bios or efi")
 	}
 
 	//  Validate boot_disk_size.
@@ -392,7 +407,7 @@ func resourceGUESTCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	vmid, err := guestCREATE(c, guest_name, disk_store, src_path, resource_pool_name, memsize,
-		numvcpus, virthwver, guestos, boot_disk_type, boot_disk_size, virtual_networks,
+		numvcpus, virthwver, guestos, boot_disk_type, boot_disk_size, firmware, virtual_networks,
 		virtual_disks, guest_shutdown_timeout, ovf_properties_timer, notes, guestinfo, ovf_properties)
 	if err != nil {
 		tmpint, _ = strconv.Atoi(vmid)
